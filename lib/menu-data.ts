@@ -77,7 +77,7 @@ export const menuItems: MenuItem[] = [
     id: 'potato-or-beef-sambosa',
     name: 'Potato or Beef Sambosa',
     description: 'Golden, crispy sambosa—perfectly seasoned and fried until crunchy.',
-    price: 7.99,
+    price: 0.5,
     category: 'Appetizers',
     image_url: '/images/menu/potato-or-beef-sambosa.webp',
   },
