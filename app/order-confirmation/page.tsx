@@ -13,6 +13,7 @@ function OrderConfirmationContent() {
   const [orderStatus, setOrderStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [debugMessage, setDebugMessage] = useState<string | null>(null)
+  const [savedPhone, setSavedPhone] = useState<string | null>(null)
 
   useEffect(() => {
     if (sessionId) {
@@ -24,8 +25,22 @@ function OrderConfirmationContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
+  useEffect(() => {
+    try {
+      const customerData = localStorage.getItem('denver-kabob-customer-info')
+      const parsed = customerData ? JSON.parse(customerData) : null
+      const phone = typeof parsed?.phone === 'string' ? parsed.phone : null
+      setSavedPhone(phone)
+    } catch {
+      setSavedPhone(null)
+    }
+  }, [])
+
   const verifyOrder = async (attempt = 1) => {
     try {
+      const MAX_ATTEMPTS = 12
+      const RETRY_DELAY_MS = 2000
+
       // First, try to fetch orders and find the one matching this session
       const response = await fetch('/api/orders', { cache: 'no-store' })
       if (response.ok) {
@@ -120,22 +135,21 @@ function OrderConfirmationContent() {
         }
       }
       
-      // Retry up to 3 times
-      if (attempt < 3) {
+      // Retry for up to ~24 seconds (webhooks can be delayed).
+      if (attempt < MAX_ATTEMPTS) {
         setTimeout(() => {
           verifyOrder(attempt + 1)
-        }, 1500)
+        }, RETRY_DELAY_MS)
       } else {
-        // After retries, do NOT claim success if we never created/found an order.
         console.warn('Order verification timed out, showing error page')
         setOrderStatus('error')
       }
     } catch (error) {
       console.error('Error verifying order:', error)
-      if (attempt < 3) {
+      if (attempt < 12) {
         setTimeout(() => {
           verifyOrder(attempt + 1)
-        }, 1500)
+        }, 2000)
       } else {
         setOrderStatus('error')
       }
@@ -182,6 +196,27 @@ function OrderConfirmationContent() {
             >
               Return to Cart
             </Link>
+            <Link
+              href={
+                savedPhone
+                  ? `/order-tracking?phone=${encodeURIComponent(savedPhone)}`
+                  : '/order-tracking'
+              }
+              className="inline-flex items-center justify-center gap-2 border-2 border-gray-300 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:border-black transition-colors"
+            >
+              Track Order
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setOrderStatus('loading')
+                setDebugMessage(null)
+                verifyOrder(1)
+              }}
+              className="inline-flex items-center justify-center gap-2 border-2 border-gray-300 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:border-black transition-colors"
+            >
+              Retry
+            </button>
             <a
               href="tel:+17205733605"
               className="inline-flex items-center justify-center gap-2 border-2 border-gray-300 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:border-black transition-colors"
