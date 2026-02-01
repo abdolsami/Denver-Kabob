@@ -44,7 +44,7 @@ function OrderConfirmationContent() {
       // First, try to fetch orders and find the one matching this session
       const response = await fetch('/api/orders', { cache: 'no-store' })
       if (response.ok) {
-        const { orders } = await response.json()
+        const { orders } = await response.json().catch(() => ({ orders: [] }))
         const order = orders.find((o: any) => o.stripe_session_id === sessionId)
         if (order) {
           setOrderDetails(order)
@@ -54,6 +54,13 @@ function OrderConfirmationContent() {
           localStorage.removeItem('denver-kabob-order-details')
           return
         }
+      } else {
+        const err = await response.json().catch(() => ({}))
+        setDebugMessage(
+          typeof err?.error === 'string'
+            ? `Orders API error: ${err.error}`
+            : `Orders API error (HTTP ${response.status})`
+        )
       }
       
       // If order not found, ALWAYS try direct creation (for $0 orders or webhook failures)
@@ -142,6 +149,10 @@ function OrderConfirmationContent() {
         }, RETRY_DELAY_MS)
       } else {
         console.warn('Order verification timed out, showing error page')
+        setDebugMessage((prev) =>
+          prev ||
+          'Your payment may still be processing. Please use Track Order or tap Retry in a moment.'
+        )
         setOrderStatus('error')
       }
     } catch (error) {
@@ -151,6 +162,10 @@ function OrderConfirmationContent() {
           verifyOrder(attempt + 1)
         }, 2000)
       } else {
+        setDebugMessage((prev) =>
+          prev ||
+          'We could not confirm your order yet. Please use Track Order or tap Retry.'
+        )
         setOrderStatus('error')
       }
     }
