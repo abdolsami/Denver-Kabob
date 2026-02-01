@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Order } from '@/lib/types'
 import { Clock, ChefHat, CheckCircle, Package, Phone, X } from 'lucide-react'
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
 const ADMIN_SESSION_KEY = 'denver-kabob-admin-authenticated'
 
 const statusConfig = {
@@ -221,14 +220,28 @@ export default function AdminDashboard() {
     }
   }, [playContinuousSound])
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
+  const handleLogin = async () => {
+    setError('')
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (!res.ok) {
+        setError('Incorrect password')
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      if (!data?.ok) {
+        setError('Incorrect password')
+        return
+      }
       setAuthenticated(true)
       setAdminSession(true)
-      setError('')
       fetchOrders()
-    } else {
-      setError('Incorrect password')
+    } catch {
+      setError('Login failed. Please try again.')
     }
   }
 

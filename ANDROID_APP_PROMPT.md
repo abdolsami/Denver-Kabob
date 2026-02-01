@@ -849,14 +849,14 @@ const stopSound = () => {
 #### Option 1: Direct Supabase (RECOMMENDED)
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-ADMIN_PASSWORD=admin123
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+ADMIN_PASSWORD=your_admin_password_here
 ```
 
 #### Option 2: Next.js API Routes
 ```env
 API_BASE_URL=https://your-domain.com
-ADMIN_PASSWORD=admin123
+ADMIN_PASSWORD=your_admin_password_here
 ```
 
 **Important**: 

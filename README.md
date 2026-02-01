@@ -67,64 +67,6 @@ A fully functional, production-ready restaurant website built with Next.js, Tail
       - Select event: `checkout.session.completed`
       - Copy the webhook signing secret
 
-5. **Configure environment variables**
-
-   Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Fill in your values:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-   
-   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-   STRIPE_SECRET_KEY=sk_test_...
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   
-   NEXT_PUBLIC_ADMIN_PASSWORD=admin123
-   ```
-
-6. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-   Open your deployed site URL (or your local dev URL) in your browser.
-
-## Project Structure
-
-```
-denver-kabob/
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes
-│   │   ├── create-checkout-session/
-│   │   ├── webhook/
-│   │   └── orders/
-│   ├── admin/             # Admin dashboard
-│   ├── cart/              # Shopping cart page
-│   ├── menu/              # Menu page
-│   ├── order-confirmation/ # Order confirmation page
-│   ├── layout.tsx         # Root layout
-│   ├── page.tsx           # Home page
-│   └── globals.css        # Global styles
-├── components/            # React components
-│   ├── Navbar.tsx
-│   └── Footer.tsx
-├── lib/                   # Utility functions
-│   ├── supabase.ts       # Supabase client
-│   ├── stripe.ts         # Stripe client
-│   ├── cart.ts           # Cart utilities
-│   ├── types.ts          # TypeScript types
-│   └── menu-data.ts      # Menu items data
-├── supabase-schema.sql   # Database schema
-└── README.md             # This file
-```
-
 ## Deployment
 
 ### Vercel (Recommended)
@@ -168,7 +110,7 @@ Update the tax rate in `app/api/create-checkout-session/route.ts` (currently 8%)
 
 ## Admin Dashboard
 
-Access the admin dashboard at `/admin`. Default password is `admin123` (or set via `NEXT_PUBLIC_ADMIN_PASSWORD`).
+Access the admin dashboard at `/admin`. Set the server-side environment variable `ADMIN_PASSWORD` in your host (Netlify) to control access.
 
 The dashboard allows you to:
 - View all orders in real-time
