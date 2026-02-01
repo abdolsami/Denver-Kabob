@@ -1,6 +1,12 @@
 [build]
   command = "npm run build"
 
+[build.environment]
+  # Netlify secret scanner can false-positive on values that are expected to be public
+  # in client bundles (e.g. Stripe publishable key, Supabase anon key).
+  # We still keep real secrets server-only (STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD).
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_URL"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
