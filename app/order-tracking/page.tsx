@@ -6,6 +6,10 @@ import { Order } from '@/lib/types'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
+// Netlify/Next.js build was failing to prerender this page.
+// This page relies on runtime URL search params and user-driven fetching, so force dynamic rendering.
+export const dynamic = 'force-dynamic'
+
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
   preparing: { label: 'Preparing', color: 'bg-blue-100 text-blue-800', icon: ChefHat },
