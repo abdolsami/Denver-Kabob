@@ -7,8 +7,7 @@ export const createServerClient = () => {
   
   if (!supabaseUrl) {
     throw new Error(
-      'SUPABASE_URL is required for server-side operations. ' +
-      'Please add it to your environment variables.'
+      'Missing Supabase URL. Set SUPABASE_URL (recommended) or NEXT_PUBLIC_SUPABASE_URL.'
     )
   }
 

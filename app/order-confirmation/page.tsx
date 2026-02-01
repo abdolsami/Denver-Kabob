@@ -12,6 +12,7 @@ function OrderConfirmationContent() {
   const sessionId = searchParams.get('session_id')
   const [orderStatus, setOrderStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [orderDetails, setOrderDetails] = useState<any>(null)
+  const [debugMessage, setDebugMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (sessionId) {
@@ -107,12 +108,15 @@ function OrderConfirmationContent() {
               }
             } else {
               console.error('Order creation failed:', createData.error)
+              setDebugMessage(createData?.error ? String(createData.error) : 'Direct order creation failed')
             }
           } else {
             console.warn('Cart or customer data not found in localStorage')
+            setDebugMessage('Cart/customer data not found to create order. Please contact support if you were charged.')
           }
         } catch (directError) {
           console.error('Direct order creation error:', directError)
+          setDebugMessage('Direct order creation error. Please contact support if you were charged.')
         }
       }
       
@@ -122,19 +126,18 @@ function OrderConfirmationContent() {
           verifyOrder(attempt + 1)
         }, 1500)
       } else {
-        // After 3 attempts, show success anyway
-        console.warn('Order verification timed out, showing success page anyway')
-        setOrderStatus('success')
+        // After retries, do NOT claim success if we never created/found an order.
+        console.warn('Order verification timed out, showing error page')
+        setOrderStatus('error')
       }
     } catch (error) {
       console.error('Error verifying order:', error)
-      // On error, still show success (payment was successful)
       if (attempt < 3) {
         setTimeout(() => {
           verifyOrder(attempt + 1)
         }, 1500)
       } else {
-        setOrderStatus('success')
+        setOrderStatus('error')
       }
     }
   }
@@ -166,6 +169,11 @@ function OrderConfirmationContent() {
             <p className="text-sm text-gray-500 mb-8">
               If you were charged, please contact us with your order details and we&apos;ll resolve this immediately.
             </p>
+            {debugMessage ? (
+              <p className="text-xs text-gray-500 mb-6">
+                {debugMessage}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

@@ -68,14 +68,12 @@ export async function POST(request: NextRequest) {
         tip_percent,
         tip_amount,
         comments,
-        subtotal,
         tax,
-        total,
         items,
       } = session.metadata || {}
 
-      if (!customer_name || !customer_phone || !items) {
-        throw new Error('Missing required order metadata')
+      if (!customer_name || !customer_phone) {
+        throw new Error('Missing required order metadata (customer_name/customer_phone)')
       }
 
       // Use provided names or derive from full name
@@ -83,7 +81,36 @@ export async function POST(request: NextRequest) {
       const derivedFirstName = customer_first_name || nameParts[0] || customer_name
       const derivedLastName = customer_last_name || nameParts.slice(1).join(' ') || null
 
-      const orderItems = JSON.parse(items)
+      // Prefer cart JSON from metadata (older versions). If missing, reconstruct from Stripe line items.
+      let orderItems: any[] = []
+      if (items) {
+        try {
+          orderItems = JSON.parse(items)
+        } catch {
+          orderItems = []
+        }
+      }
+      if (!Array.isArray(orderItems) || orderItems.length === 0) {
+        const lineItemsResp = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 })
+        const lineItems = Array.isArray(lineItemsResp.data) ? lineItemsResp.data : []
+        orderItems = lineItems
+          .filter((li) => {
+            const name = (li.description || '').toLowerCase()
+            return name !== 'sales tax' && name !== 'tip'
+          })
+          .map((li) => {
+            const unitAmount = typeof li.price?.unit_amount === 'number' ? li.price.unit_amount : 0
+            const quantity = typeof li.quantity === 'number' ? li.quantity : 1
+            return {
+              id: li.id,
+              name: li.description || 'Item',
+              price: unitAmount / 100,
+              quantity,
+              selectedOptions: [],
+              selectedAddons: [],
+            }
+          })
+      }
 
       const isMissingColumnError = (message?: string) => {
         if (!message) return false
@@ -153,9 +180,6 @@ export async function POST(request: NextRequest) {
       const parsedTaxRaw = tax ? parseFloat(tax) : 0
       const taxAmount = Number.isFinite(parsedTaxRaw) ? parsedTaxRaw : 0
 
-      const parsedSubtotalRaw = subtotal ? parseFloat(subtotal) : 0
-      const subtotalAmount = Number.isFinite(parsedSubtotalRaw) ? parsedSubtotalRaw : 0
-
       const parsedTipAmountRaw =
         tip_amount !== undefined && tip_amount !== null && tip_amount !== ''
           ? parseFloat(tip_amount)
@@ -173,9 +197,12 @@ export async function POST(request: NextRequest) {
         : 0
 
       const normalizedTipAmount =
-        tipAmount > 0 ? tipAmount : Number((subtotalAmount * (tipPercent / 100)).toFixed(2))
+        tipAmount > 0 ? tipAmount : 0
 
-      const totalAmount = Number((subtotalAmount + taxAmount + normalizedTipAmount).toFixed(2))
+      // Total comes from Stripe's session amount_total (includes our tax/tip line items).
+      const stripeTotalRaw = typeof session.amount_total === 'number' ? session.amount_total / 100 : 0
+      const totalAmount = Number.isFinite(stripeTotalRaw) ? Number(stripeTotalRaw.toFixed(2)) : 0
+      const subtotalAmount = Number((totalAmount - taxAmount - normalizedTipAmount).toFixed(2))
 
       const fullInsertPayload = {
         customer_name,

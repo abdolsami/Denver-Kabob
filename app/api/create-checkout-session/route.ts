@@ -184,10 +184,9 @@ export async function POST(request: NextRequest) {
         tip_percent: normalizedTipPercent.toFixed(2),
         tip_amount: tipAmount.toFixed(2),
         comments: normalizedComments,
-        subtotal: subtotal.toFixed(2),
         tax: tax.toFixed(2),
-        total: total.toFixed(2),
-        items: JSON.stringify(items), // Includes selectedOptions and selectedAddons
+        // IMPORTANT:
+        // Do NOT store the full cart JSON in Stripe metadata (size limits can prevent order creation).
       },
     })
 
