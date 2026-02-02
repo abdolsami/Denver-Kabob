@@ -41,11 +41,12 @@ function OrderConfirmationContent() {
       const MAX_ATTEMPTS = 12
       const RETRY_DELAY_MS = 2000
 
-      // First, try to fetch orders and find the one matching this session
-      const response = await fetch('/api/orders', { cache: 'no-store' })
+      // First, try to fetch order by Stripe session ID (fast + reliable)
+      const response = await fetch(`/api/orders/by-session?sessionId=${encodeURIComponent(sessionId || '')}`, {
+        cache: 'no-store',
+      })
       if (response.ok) {
-        const { orders } = await response.json().catch(() => ({ orders: [] }))
-        const order = orders.find((o: any) => o.stripe_session_id === sessionId)
+        const { order } = await response.json().catch(() => ({ order: null }))
         if (order) {
           setOrderDetails(order)
           setOrderStatus('success')
@@ -63,6 +64,20 @@ function OrderConfirmationContent() {
         )
       }
       
+      // If we still don't see the order, try to ensure it exists using Stripe (does not require localStorage).
+      // Do this once early to handle cases where the webhook hasn't run yet.
+      if (attempt === 2 && sessionId) {
+        try {
+          await fetch('/api/orders/ensure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId }),
+          })
+        } catch {
+          // ignore; we'll keep polling
+        }
+      }
+
       // If order not found, ALWAYS try direct creation (for $0 orders or webhook failures)
       // Get cart data from localStorage (if still available)
       if (attempt <= 2) {
@@ -134,7 +149,7 @@ function OrderConfirmationContent() {
             }
           } else {
             console.warn('Cart or customer data not found in localStorage')
-            setDebugMessage('Cart/customer data not found to create order. Please contact support if you were charged.')
+            setDebugMessage('We could not use your saved cart details. If you were charged, use Track Order or tap Retry.')
           }
         } catch (directError) {
           console.error('Direct order creation error:', directError)
