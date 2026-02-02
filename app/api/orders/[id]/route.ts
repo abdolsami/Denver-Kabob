@@ -48,7 +48,10 @@ export async function PATCH(
       throw error
     }
 
-    return NextResponse.json({ order: data })
+    return NextResponse.json(
+      { order: data },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   } catch (error: any) {
     console.error('Error updating order:', error)
     return NextResponse.json(

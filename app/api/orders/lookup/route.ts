@@ -51,10 +51,16 @@ export async function GET(request: NextRequest) {
         return orderDate >= thirtyDaysAgo
       }) || []
 
-      return NextResponse.json({ orders: filteredOrders })
+      return NextResponse.json(
+        { orders: filteredOrders },
+        { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+      )
     }
 
-    return NextResponse.json({ orders: orders || [] })
+    return NextResponse.json(
+      { orders: orders || [] },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   } catch (error: any) {
     console.error('Error looking up orders:', error)
     return NextResponse.json(

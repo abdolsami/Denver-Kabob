@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ order: order || null })
+    return NextResponse.json(
+      { order: order || null },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    )
   } catch (error: any) {
     console.error('Error fetching order by session:', error)
     return NextResponse.json(

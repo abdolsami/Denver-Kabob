@@ -20,7 +20,14 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    return NextResponse.json({ orders })
+    return NextResponse.json(
+      { orders },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
