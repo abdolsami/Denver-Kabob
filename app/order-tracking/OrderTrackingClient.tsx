@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search, Phone, Hash, Clock, ChefHat, Package, CheckCircle, Loader2 } from 'lucide-react'
 import { Order } from '@/lib/types'
 import Link from 'next/link'
@@ -51,9 +51,27 @@ export default function OrderTrackingClient() {
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !anon) return
-    supabaseRef.current = createClient(url, anon)
+    if (url && anon) {
+      supabaseRef.current = createClient(url, anon)
+      return
+    }
+    // Fallback: load runtime config from server (helps when envs aren't inlined as expected).
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/public-config?_ts=${Date.now()}`, { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (data?.supabaseUrl && data?.supabaseAnonKey) {
+          supabaseRef.current = createClient(data.supabaseUrl, data.supabaseAnonKey)
+        }
+      } catch {
+        // ignore
+      }
+    })()
   }, [])
+
+  const trackedOrderIds = useMemo(() => {
+    return orders.map((o) => o.id).filter(Boolean)
+  }, [orders])
 
   const fetchTrackedOrders = useCallback(
     async (
@@ -148,18 +166,19 @@ export default function OrderTrackingClient() {
     const supabase = supabaseRef.current
     if (!supabase) return
 
-    const normalizedPhone = lastQuery.type === 'phone' ? lastQuery.value.replace(/\D/g, '') : ''
+    // Most reliable: subscribe by order IDs we already fetched (works even if phone formatting differs).
+    // For single orderId search, subscribe directly to that id.
     const filter =
       lastQuery.type === 'orderId'
         ? `id=eq.${lastQuery.value}`
-        : normalizedPhone
-          ? `customer_phone=eq.${normalizedPhone}`
+        : trackedOrderIds.length > 0
+          ? `id=in.(${trackedOrderIds.join(',')})`
           : ''
 
     if (!filter) return
 
     const channel = supabase
-      .channel(`orders-tracking-${lastQuery.type}-${normalizedPhone || lastQuery.value}`)
+      .channel(`orders-tracking-${lastQuery.type}-${lastQuery.value}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'orders', filter },
@@ -176,7 +195,7 @@ export default function OrderTrackingClient() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [hasSearched, lastQuery])
+  }, [hasSearched, lastQuery, trackedOrderIds])
 
   // If the user switches away and comes back, refresh immediately (mobile/background timers get throttled).
   useEffect(() => {
