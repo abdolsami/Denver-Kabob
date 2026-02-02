@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     const customerFirstName = (customerInfo.firstName || '').trim()
     const customerLastName = (customerInfo.lastName || '').trim()
     const customerPhone = (customerInfo.phone || '').trim()
+    const customerPhoneDigits = customerPhone.replace(/\D/g, '')
     const customerEmail = (customerInfo.email || '').trim()
     const normalizedCustomerName = `${customerFirstName} ${customerLastName}`.trim()
 
@@ -59,6 +60,12 @@ export async function POST(request: NextRequest) {
     if (!customerPhone) {
       return NextResponse.json(
         { error: 'Customer phone number is required' },
+        { status: 400 }
+      )
+    }
+    if (customerPhoneDigits.length < 10) {
+      return NextResponse.json(
+        { error: 'Customer phone number is invalid' },
         { status: 400 }
       )
     }
@@ -179,7 +186,8 @@ export async function POST(request: NextRequest) {
         customer_name: normalizedCustomerName,
         customer_first_name: customerFirstName,
         customer_last_name: customerLastName,
-        customer_phone: customerPhone,
+        // Store digits-only phone for consistent Supabase lookup and formatting on the frontend.
+        customer_phone: customerPhoneDigits,
         customer_email: customerEmail,
         tip_percent: normalizedTipPercent.toFixed(2),
         tip_amount: tipAmount.toFixed(2),

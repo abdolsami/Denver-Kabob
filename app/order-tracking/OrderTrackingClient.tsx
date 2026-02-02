@@ -5,6 +5,7 @@ import { Search, Phone, Hash, Clock, ChefHat, Package, CheckCircle, Loader2 } fr
 import { Order } from '@/lib/types'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -43,6 +44,16 @@ export default function OrderTrackingClient() {
   const didAutoSearchRef = useRef(false)
 
   const REFRESH_INTERVAL_MS = 2000
+
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  // Create browser Supabase client once (for realtime updates).
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !anon) return
+    supabaseRef.current = createClient(url, anon)
+  }, [])
 
   const fetchTrackedOrders = useCallback(
     async (
@@ -130,6 +141,42 @@ export default function OrderTrackingClient() {
     }, REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [hasSearched, lastQuery, fetchTrackedOrders, REFRESH_INTERVAL_MS])
+
+  // Realtime: subscribe to status updates so it changes immediately when admin updates.
+  useEffect(() => {
+    if (!hasSearched || !lastQuery) return
+    const supabase = supabaseRef.current
+    if (!supabase) return
+
+    const normalizedPhone = lastQuery.type === 'phone' ? lastQuery.value.replace(/\D/g, '') : ''
+    const filter =
+      lastQuery.type === 'orderId'
+        ? `id=eq.${lastQuery.value}`
+        : normalizedPhone
+          ? `customer_phone=eq.${normalizedPhone}`
+          : ''
+
+    if (!filter) return
+
+    const channel = supabase
+      .channel(`orders-tracking-${lastQuery.type}-${normalizedPhone || lastQuery.value}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter },
+        (payload: any) => {
+          const next = payload?.new
+          if (!next?.id) return
+          setOrders((prev) =>
+            prev.map((o) => (o.id === next.id ? { ...o, ...next } : o))
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [hasSearched, lastQuery])
 
   // If the user switches away and comes back, refresh immediately (mobile/background timers get throttled).
   useEffect(() => {

@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const customerFirstName = (customerInfo.firstName || '').trim()
     const customerLastName = (customerInfo.lastName || '').trim()
     const customerPhone = (customerInfo.phone || '').trim()
+    const customerPhoneDigits = customerPhone.replace(/\D/g, '')
     const customerEmail = (customerInfo.email || '').trim()
     const normalizedCustomerName = `${customerFirstName} ${customerLastName}`.trim()
 
@@ -49,6 +50,12 @@ export async function POST(request: NextRequest) {
     if (!customerPhone) {
       return NextResponse.json(
         { error: 'Customer phone number is required' },
+        { status: 400 }
+      )
+    }
+    if (customerPhoneDigits.length < 10) {
+      return NextResponse.json(
+        { error: 'Customer phone number is invalid' },
         { status: 400 }
       )
     }
@@ -168,7 +175,7 @@ export async function POST(request: NextRequest) {
       customer_name: normalizedCustomerName,
       customer_first_name: customerFirstName || null,
       customer_last_name: customerLastName || null,
-      customer_phone: customerPhone,
+      customer_phone: customerPhoneDigits,
       customer_email: customerEmail || null,
       tip_percent: normalizedTipPercent,
       tip_amount: tipAmount,
@@ -184,7 +191,7 @@ export async function POST(request: NextRequest) {
 
     const minimalInsertPayload = {
       customer_name: normalizedCustomerName,
-      customer_phone: customerPhone,
+      customer_phone: customerPhoneDigits,
       customer_email: customerEmail || null,
       total_amount: total,
       tax_amount: tax,

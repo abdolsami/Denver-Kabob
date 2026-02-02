@@ -55,11 +55,18 @@ export async function POST(request: NextRequest) {
     const meta = session.metadata || {}
     const customerName = (meta.customer_name || session.customer_details?.name || '').toString().trim()
     const customerPhone = (meta.customer_phone || session.customer_details?.phone || '').toString().trim()
+    const customerPhoneDigits = customerPhone.replace(/\D/g, '')
     const customerEmail = (meta.customer_email || session.customer_details?.email || '').toString().trim()
 
-    if (!customerName || !customerPhone) {
+    if (!customerName || !customerPhoneDigits) {
       return NextResponse.json(
         { error: 'Missing customer_name/customer_phone on session' },
+        { status: 400 }
+      )
+    }
+    if (customerPhoneDigits.length < 10) {
+      return NextResponse.json(
+        { error: 'Invalid customer_phone on session' },
         { status: 400 }
       )
     }
@@ -110,7 +117,7 @@ export async function POST(request: NextRequest) {
       customer_name: customerName,
       customer_first_name: customerFirstName || null,
       customer_last_name: customerLastName || null,
-      customer_phone: customerPhone,
+      customer_phone: customerPhoneDigits,
       customer_email: customerEmail || null,
       tip_percent: Number.isFinite(tipPercent) ? tipPercent : null,
       tip_amount: Number.isFinite(tipAmount) ? tipAmount : null,
@@ -124,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     const minimalInsertPayload = {
       customer_name: customerName,
-      customer_phone: customerPhone,
+      customer_phone: customerPhoneDigits,
       customer_email: customerEmail || null,
       total_amount: totalAmount,
       tax_amount: taxAmount,

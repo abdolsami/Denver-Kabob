@@ -32,10 +32,29 @@ export async function GET(request: NextRequest) {
     } else if (phone) {
       // Normalize phone number (remove non-digits for comparison)
       const normalizedPhone = phone.replace(/\D/g, '')
-      query = query.ilike('customer_phone', `%${normalizedPhone}%`)
+      // Prefer exact match (we store digits-only), and fall back to partial match for older rows.
+      query = query.eq('customer_phone', normalizedPhone)
     }
 
-    const { data: orders, error } = await query
+    let { data: orders, error } = await query
+
+    // Fallback: if no results and phone search, try partial match (supports older formatted rows).
+    if (!error && phone && !orderId && Array.isArray(orders) && orders.length === 0) {
+      const normalizedPhone = phone.replace(/\D/g, '')
+      const fallback = await supabase
+        .from('orders')
+        .select(
+          `
+        *,
+        order_items (*)
+      `
+        )
+        .ilike('customer_phone', `%${normalizedPhone}%`)
+        .order('created_at', { ascending: false })
+
+      orders = fallback.data || []
+      error = fallback.error as any
+    }
 
     if (error) {
       throw error

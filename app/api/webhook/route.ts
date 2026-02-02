@@ -76,6 +76,11 @@ export async function POST(request: NextRequest) {
         throw new Error('Missing required order metadata (customer_name/customer_phone)')
       }
 
+      const normalizedCustomerPhone = customer_phone.toString().replace(/\D/g, '')
+      if (normalizedCustomerPhone.length < 10) {
+        throw new Error('Invalid customer phone in metadata')
+      }
+
       // Use provided names or derive from full name
       const nameParts = customer_name.split(' ').filter(Boolean)
       const derivedFirstName = customer_first_name || nameParts[0] || customer_name
@@ -208,7 +213,7 @@ export async function POST(request: NextRequest) {
         customer_name,
         customer_first_name: derivedFirstName,
         customer_last_name: derivedLastName,
-        customer_phone,
+        customer_phone: normalizedCustomerPhone,
         customer_email: customer_email || null,
         tip_percent: Number.isFinite(tipPercent) ? tipPercent : null,
         tip_amount: Number.isFinite(normalizedTipAmount) ? normalizedTipAmount : null,
@@ -225,7 +230,7 @@ export async function POST(request: NextRequest) {
 
       const minimalInsertPayload = {
         customer_name,
-        customer_phone,
+        customer_phone: normalizedCustomerPhone,
         customer_email: customer_email || null,
         total_amount: totalAmount,
         tax_amount: taxAmount,
