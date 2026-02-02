@@ -42,6 +42,8 @@ export default function OrderTrackingClient() {
   const [hasSearched, setHasSearched] = useState(false)
   const didAutoSearchRef = useRef(false)
 
+  const REFRESH_INTERVAL_MS = 2000
+
   const fetchTrackedOrders = useCallback(
     async (
       query: { type: 'phone' | 'orderId'; value: string },
@@ -58,10 +60,12 @@ export default function OrderTrackingClient() {
 
       try {
         const param = query.type === 'phone' ? 'phone' : 'orderId'
-        const response = await fetch(`/api/orders/lookup?${param}=${encodeURIComponent(query.value)}`, {
+        // Add a timestamp param to defeat any intermediary caching (CDN/proxy/browser).
+        const url = `/api/orders/lookup?${param}=${encodeURIComponent(query.value)}&_ts=${Date.now()}`
+        const response = await fetch(url, {
           cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-store, max-age=0',
             'Pragma': 'no-cache',
           },
         })
@@ -123,8 +127,20 @@ export default function OrderTrackingClient() {
     if (!hasSearched || !lastQuery) return
     const interval = setInterval(() => {
       fetchTrackedOrders(lastQuery, { silent: true })
-    }, 5000)
+    }, REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
+  }, [hasSearched, lastQuery, fetchTrackedOrders, REFRESH_INTERVAL_MS])
+
+  // If the user switches away and comes back, refresh immediately (mobile/background timers get throttled).
+  useEffect(() => {
+    if (!hasSearched || !lastQuery) return
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTrackedOrders(lastQuery, { silent: true })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [hasSearched, lastQuery, fetchTrackedOrders])
 
   // Auto-search when arriving from order confirmation
